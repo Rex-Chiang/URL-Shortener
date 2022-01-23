@@ -1,10 +1,11 @@
 from URLShortenerApp.models import URLRecords
 from URLShortenerApp.serializers import URLRecordsSerializer
+from URLShortenerApp.utils import transform
 from rest_framework import views
 from rest_framework import status
 from rest_framework.response import Response
-from URLShortenerApp.utils import transform
 from django.shortcuts import redirect
+from django.core.cache import cache
 
 class ShortenURLView(views.APIView):
     def post(self, request):
@@ -12,9 +13,11 @@ class ShortenURLView(views.APIView):
         url_record = URLRecords.objects.filter(long_url = long_url)
 
         if not long_url:
-            return Response("Please Enter The URL !", status = status.HTTP_400_BAD_REQUEST)
+            return Response({"message":"Please Enter The URL !"}, status = status.HTTP_400_BAD_REQUEST)
         if url_record:
-            return Response(url_record.values(), status = status.HTTP_303_SEE_OTHER)
+            # Refresh the data in cache
+            cache.set("url_record_" + url_record.first().short_url, url_record, 30)
+            return Response(url_record.values()[0], status = status.HTTP_303_SEE_OTHER)
 
         short_url = transform.create_short_url(URLRecords())
         # Add short_url as parameter to request data
@@ -25,20 +28,32 @@ class ShortenURLView(views.APIView):
 
         if serializer.is_valid():
             serializer.save()
+            url_record = URLRecords.objects.filter(long_url = long_url)
+            # Set the data in cache for later retrieve
+            cache.set("url_record_" + short_url, url_record, 30)
             return Response(serializer.data, status = status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 class RedirectURLView(views.APIView):
     def get(self, request, shortened_part):
-        url_record = URLRecords.objects.filter(short_url = shortened_part).first()
+        url_record_cache = cache.get("url_record_" + shortened_part)
+        # Retrieve the data from cache
+        if url_record_cache:
+            url_record = url_record_cache
+        else:
+            url_record = URLRecords.objects.filter(short_url = shortened_part)
 
         if not url_record:
-            return Response("The URL Not Found !", status = status.HTTP_404_NOT_FOUND)
-        # Increase the shirt URL requested times
-        url_record.request_times += 1
-        url_record.save()
+            return Response({"message":"The URL Not Found !"}, status = status.HTTP_404_NOT_FOUND)
 
-        long_url = url_record.long_url
+        url_record_obj = url_record.first()
+        # Increase the shirt URL requested times
+        url_record_obj.request_times += 1
+        url_record_obj.save()
+        # Refresh the data in cache
+        cache.set("url_record_" + shortened_part, url_record, 30)
+
+        long_url = url_record_obj.long_url
         # Redirect to the original URL
         return redirect(long_url)
