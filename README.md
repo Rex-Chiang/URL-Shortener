@@ -39,4 +39,4 @@ docker-compose up -d --build
 * **Visit :** http://127.0.0.1:8080/?#/
 
 ## Demo
-![Demo](https://github.com/Rex-Chiang/URL-Shortener/blob/master/Demo.gif)
+![Demo](https://github.com/Rex-Chiang/URL-Shortener/blob/main/Demo.gif)
