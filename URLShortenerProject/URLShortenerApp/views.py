@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.shortcuts import redirect
 from django.core.cache import cache
+from django.db import IntegrityError
 
 class ShortenURLView(views.APIView):
     def post(self, request):
@@ -27,12 +28,22 @@ class ShortenURLView(views.APIView):
         serializer = URLRecordsSerializer(data = request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            try:
+                serializer.save()
+            except IntegrityError as e:
+                serializer.save(short_url = transform.create_short_url(URLRecords()))
+
             url_record = URLRecords.objects.filter(long_url = long_url)
             # Set the data in cache for later retrieve
             cache.set("url_record_" + short_url, url_record, 30)
             return Response(serializer.data, status = status.HTTP_201_CREATED)
         else:
+            if "long_url" in serializer.errors.keys() and "Longer URL already exists" in serializer.errors["long_url"][0]:
+                url_record = URLRecords.objects.filter(long_url = long_url)
+                if url_record:
+                    return Response(url_record.values()[0], status = status.HTTP_303_SEE_OTHER)
+                else:
+                    Response(serializer.errors, status = status.HTTP_409_CONFLICT)
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
 class RedirectURLView(views.APIView):

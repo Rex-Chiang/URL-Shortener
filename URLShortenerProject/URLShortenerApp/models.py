@@ -1,7 +1,7 @@
 from django.db import models
 
 class URLRecords(models.Model):
-    long_url = models.URLField(verbose_name = "Longer URL")
+    long_url = models.URLField(unique = True, verbose_name = "Longer URL")
     short_url = models.CharField(max_length = 15, unique = True, verbose_name = "Shorter URL")
     request_times = models.IntegerField(default = 0, verbose_name = "Shorter URL Requested Times")
     date_created = models.DateTimeField(auto_now_add = True, verbose_name = "Created Date")
