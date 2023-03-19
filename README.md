@@ -30,10 +30,10 @@ Users can enter a URL that need to shorten, and the short URL will show at the w
 
 ## Tests 
 ```
-cd URL-Shortener/URLShortenerProject
+cd URL-Shortener/URLShortenerBackend
 docker-compose up -d --build
 cd ..
-cd URLShortenerVue
+cd URLShortenerFrontend
 docker-compose up -d --build
 ```
 * **Visit :** http://127.0.0.1:8080/?#/
