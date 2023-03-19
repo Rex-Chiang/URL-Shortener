@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  mysql_db:
+    image: mysql:8.0.27
+    container_name: mysql_db
+    expose:
+      - "3306"
+    environment:
+      - MYSQL_ROOT_HOST=127.0.0.1
+      - MYSQL_ROOT_PASSWORD=urlshortenerpwd
+      - MYSQL_DATABASE=urlshortener
+      - MYSQL_USER=mysql
+      - MYSQL_PASSWORD=urlshortenerpwd
+    restart: always
+
+  redis_cache:
+    image: redis
+    container_name: redis_cache
+    privileged: true
+    ports: 
+      - "6379:6379"
+    restart: always
+
+  web:
+    build: .
+    image: django
+    container_name: django_url_shortener
+    command: bash -c "python3 manage.py wait_for_db &&
+                      python3 manage.py migrate &&
+                      python3 manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - URLShortener_Django_SECRET_KEY=django-insecure-0t*qht(=+^2&4p%40+zapq1l&*sy4xo7g(8hdr(x+=+943z_m#
+      - DB_HOST=mysql_db
+      - DB_PORT=3306
+      - DB_NAME=urlshortener
+      - DB_USER=mysql
+      - DB_PASSWORD=urlshortenerpwd
+      - REDIS_LOCATION=redis://redis_cache:6379/
+    expose:
+      - "8000"
+    depends_on:
+      - mysql_db
+      - redis_cache
+    links:
+      - mysql_db
+      - redis_cache
